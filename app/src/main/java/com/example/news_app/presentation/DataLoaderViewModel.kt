@@ -11,22 +11,24 @@ import kotlinx.coroutines.launch
 
 class DataLoaderViewModel : ViewModel() {
 
-    private val _status = MutableLiveData(Status.LOADING)
+    private var _status = MutableLiveData(Status.LOADING)
     private val _newsList: MutableLiveData<List<NewsItemModel>> = MutableLiveData()
     val status: LiveData<Status> = _status
     val newsList: LiveData<List<NewsItemModel>> = _newsList
 
     fun loadNews() {
         viewModelScope.launch {
-            val loadedNews = NewsRepo().loadNews()
-            if (loadedNews.isNotEmpty()) {
-                _status.value = Status.LOADING
+            val loadedItems = NewsRepo().loadNews()
+            val loadedNews = loadedItems.newsItemModels
+            val loadedStatus = loadedItems.status
+            if (loadedStatus.isNotBlank()) {
+                _status.postValue(Status.LOADING)
                 _newsList.postValue(
                     loadedNews
                 )
-                _status.value = Status.SUCCESS
+                _status.postValue(Status.OK)
             } else {
-                _status.value = Status.ERROR
+                _status.postValue(Status.ERROR)
             }
         }
     }

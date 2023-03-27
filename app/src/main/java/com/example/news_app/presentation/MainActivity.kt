@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.news_app.R
 import com.example.news_app.domain.NewsItemModel
-import androidx.compose.foundation.Image
 import com.example.news_app.data.Status
 
 
@@ -112,7 +111,7 @@ fun NewsList(dataLoaderViewModel: DataLoaderViewModel) {
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
-            Status.SUCCESS -> {
+            Status.OK -> {
                 LazyColumn {
                     items(newsList) { newsItem ->
                         NewsCard(newsItem)

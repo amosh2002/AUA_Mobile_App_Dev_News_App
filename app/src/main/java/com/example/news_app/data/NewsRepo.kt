@@ -16,20 +16,25 @@
 package com.example.news_app.data
 
 import com.example.news_app.domain.NewsItemModel
+import com.example.news_app.domain.ResponseModel
 
 class NewsRepo {
-    suspend fun loadNews(): List<NewsItemModel> {
-        return RetrofitHelper.getInstance().create(NewsApiService::class.java)
+    suspend fun loadNews(): ResponseModel {
+        val response = RetrofitHelper.getInstance()
+            .create(NewsApiService::class.java)
             .fetchNews(COUNTRY_US)
-            .run {
-                this.body()?.articles?.map {
-                    NewsItemModel(
-                        it.Source?.name ?: "",
-                        it.author ?: "",
-                        it.title ?: "",
-                        it.urlToImage ?: ""
-                    )
-                } ?: listOf()
-            }
+        val newsItemModel = response.run {
+            this.body()?.articles?.map {
+                NewsItemModel(
+                    it.Source?.name ?: "",
+                    it.author ?: "",
+                    it.title ?: "",
+                    it.urlToImage ?: ""
+                )
+            } ?: listOf()
+        }
+        val status = response.body()?.status
+
+        return ResponseModel(status = status!!, newsItemModels = newsItemModel)
     }
 }
