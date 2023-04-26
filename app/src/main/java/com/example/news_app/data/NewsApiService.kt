@@ -11,4 +11,11 @@ interface NewsApiService {
         @Query("country") country: String,
         @Query("apiKey") apiKey: String = API_KEY_VALUE
     ): Response<NewsResponse>
+
+    @GET("/$V2/$TOP_HEADLINES")
+    suspend fun fetchNews(
+        @Query("country") country: String,
+        @Query("category") category: String,
+        @Query("apiKey") apiKey: String = API_KEY_VALUE
+    ): Response<NewsResponse>
 }

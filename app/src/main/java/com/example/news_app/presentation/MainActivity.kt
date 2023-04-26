@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,7 +34,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApp {
                 Column {
-                    TopNavBar()
+                    TopNavBar(dataLoaderViewModel = dataLoaderViewModel)
                     NewsList(dataLoaderViewModel = dataLoaderViewModel)
                 }
             }
@@ -45,8 +47,14 @@ class MainActivity : ComponentActivity() {
  * Top navigation bar with search functionality and a configure button.
  */
 @Composable
-fun TopNavBar() {
+fun TopNavBar(dataLoaderViewModel: DataLoaderViewModel) {
     val searchText = remember { mutableStateOf("") }
+
+    val onFilterSelectedListener = object : OnFilterSelectedListener {
+        override fun onFilterSelected(category: String) {
+            dataLoaderViewModel.loadNews(category)
+        }
+    }
 
     Surface(
         modifier = Modifier
@@ -81,16 +89,88 @@ fun TopNavBar() {
                         .height(48.dp)
                 )
 
-                Button(
-                    onClick = { /* TODO: Configure button action */ },
-                    modifier = Modifier
-                        .height(48.dp)
-                        .width(48.dp)
-                        .padding(start = 5.dp)
-                ) {
-                    Text(text = "F")
-                }
+                FilterButton(onFilterSelectedListener = onFilterSelectedListener)
+
             }
+        }
+    }
+}
+
+@Composable
+fun FilterButton(onFilterSelectedListener: OnFilterSelectedListener) {
+    val showMenu = remember { mutableStateOf(false) }
+    val selectedCategory = remember { mutableStateOf("") }
+
+    Button(
+        onClick = { showMenu.value = !showMenu.value },
+        modifier = Modifier
+            .height(48.dp)
+            .width(48.dp)
+            .padding(start = 5.dp)
+    ) {
+        Text(text = "F")
+    }
+
+    DropdownMenu(
+        expanded = showMenu.value,
+        onDismissRequest = {
+            showMenu.value = false
+            selectedCategory.value = ""
+        }
+    ) {
+        DropdownMenuItem(
+            onClick = {
+                selectedCategory.value = "business"
+
+            }) {
+            Text(
+                "Business",
+                color = if (selectedCategory.value == "business") Color.Magenta else Color.Black
+            )
+        }
+        DropdownMenuItem(
+            onClick = {
+                selectedCategory.value = "entertainment"
+            }) {
+            Text(
+                "Entertainment",
+                color = if (selectedCategory.value == "entertainment") Color.Magenta else Color.Black
+            )
+        }
+        DropdownMenuItem(
+            onClick = {
+                selectedCategory.value = "general"
+            }) {
+            Text(
+                "General",
+                color = if (selectedCategory.value == "general") Color.Magenta else Color.Black
+            )
+        }
+        DropdownMenuItem(
+            onClick = {
+                selectedCategory.value = "health"
+            }) {
+            Text(
+                "Health",
+                color = if (selectedCategory.value == "health") Color.Magenta else Color.Black
+            )
+        }
+        DropdownMenuItem(
+            enabled = selectedCategory.value != "",
+            onClick = {
+                onFilterSelectedListener.onFilterSelected(selectedCategory.value)
+                selectedCategory.value = ""
+                showMenu.value = false
+            },
+            modifier = Modifier.background(
+                color =
+                if (selectedCategory.value != "") Color.Magenta else Color.LightGray
+            ),
+        ) {
+            Text(
+                text = "Apply",
+                color = if (selectedCategory.value != "") Color.Black else Color.Gray
+            )
         }
     }
 }

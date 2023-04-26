@@ -17,12 +17,20 @@ package com.example.news_app.data
 
 import com.example.news_app.domain.NewsItemModel
 import com.example.news_app.domain.ResponseModel
+import retrofit2.Response
 
 class NewsRepo {
-    suspend fun loadNews(): ResponseModel {
-        val response = RetrofitHelper.getInstance()
-            .create(NewsApiService::class.java)
-            .fetchNews("us")
+    suspend fun loadNews(category: String? = null): ResponseModel {
+        val response: Response<NewsResponse> = if (category == null) {
+            RetrofitHelper.getInstance()
+                .create(NewsApiService::class.java)
+                .fetchNews("us")
+        } else {
+            RetrofitHelper.getInstance()
+                .create(NewsApiService::class.java)
+                .fetchNews(country = "us", category = category)
+        }
+
         val newsItemModel = response.run {
             this.body()?.articles?.map {
                 NewsItemModel(

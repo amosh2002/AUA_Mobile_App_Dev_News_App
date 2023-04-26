@@ -16,9 +16,9 @@ class DataLoaderViewModel : ViewModel() {
     val status: LiveData<Status> = _status
     val newsList: LiveData<List<NewsItemModel>> = _newsList
 
-    fun loadNews() {
+    fun loadNews(category: String? = null) {
         viewModelScope.launch {
-            val loadedItems = NewsRepo().loadNews()
+            val loadedItems = NewsRepo().loadNews(category)
             val loadedNews = loadedItems.newsItemModels
             val loadedStatus = loadedItems.status
             if (loadedStatus.isNotBlank()) {
