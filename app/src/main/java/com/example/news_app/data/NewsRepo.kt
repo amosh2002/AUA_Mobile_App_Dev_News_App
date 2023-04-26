@@ -22,7 +22,7 @@ class NewsRepo {
     suspend fun loadNews(): ResponseModel {
         val response = RetrofitHelper.getInstance()
             .create(NewsApiService::class.java)
-            .fetchNews(COUNTRY_US)
+            .fetchNews("us")
         val newsItemModel = response.run {
             this.body()?.articles?.map {
                 NewsItemModel(
