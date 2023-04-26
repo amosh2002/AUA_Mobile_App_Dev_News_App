@@ -19,5 +19,6 @@ data class NewsItemModel(
     val source: String,
     val author: String,
     val title: String,
-    val imageUrl: String
+    val imageUrl: String,
+    val description: String
 )

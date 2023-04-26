@@ -37,7 +37,8 @@ class NewsRepo {
                     it.Source?.name ?: "",
                     it.author ?: "",
                     it.title ?: "",
-                    it.urlToImage ?: ""
+                    it.urlToImage ?: "",
+                    it.description ?: "",
                 )
             } ?: listOf()
         }

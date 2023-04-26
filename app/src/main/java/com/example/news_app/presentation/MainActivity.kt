@@ -2,18 +2,23 @@ package com.example.news_app.presentation
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,21 +29,39 @@ import com.example.news_app.data.Status
 
 
 // Activity
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), OnNewsItemSelectedListener {
     private val dataLoaderViewModel: DataLoaderViewModel by viewModels()
+    private var showNewsDetails = mutableStateOf(false)
+    private var selectedNewsItem = mutableStateOf<NewsItemModel?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         dataLoaderViewModel.loadNews()
 
+        val listener = this
         setContent {
             MyApp {
-                Column {
-                    TopNavBar(dataLoaderViewModel = dataLoaderViewModel)
-                    NewsList(dataLoaderViewModel = dataLoaderViewModel)
+                if (showNewsDetails.value && selectedNewsItem.value != null) {
+                    BackHandler {
+                        showNewsDetails.value = false
+                    }
+                    Column {
+                        TopNavBar(dataLoaderViewModel, showNewsDetails)
+                        NewsDetails(selectedNewsItem.value!!)
+                    }
+                } else {
+                    Column {
+                        TopNavBar(dataLoaderViewModel, showNewsDetails)
+                        NewsList(dataLoaderViewModel = dataLoaderViewModel, listener = listener)
+                    }
                 }
             }
         }
+    }
+
+    override fun onNewsItemSelected(newsItem: NewsItemModel) {
+        selectedNewsItem.value = newsItem
+        showNewsDetails.value = true
     }
 }
 
@@ -47,7 +70,10 @@ class MainActivity : ComponentActivity() {
  * Top navigation bar with search functionality and a configure button.
  */
 @Composable
-fun TopNavBar(dataLoaderViewModel: DataLoaderViewModel) {
+fun TopNavBar(
+    dataLoaderViewModel: DataLoaderViewModel,
+    showNewsDetails: MutableState<Boolean>
+) {
     val searchText = remember { mutableStateOf("") }
 
     val onFilterSelectedListener = object : OnFilterSelectedListener {
@@ -69,28 +95,36 @@ fun TopNavBar(dataLoaderViewModel: DataLoaderViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "News",
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.h5
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(0.7f),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                OutlinedTextField(
-                    value = searchText.value,
-                    onValueChange = { newText -> searchText.value = newText },
-                    label = { Text("Search") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth(0.8f)
-                        .height(48.dp)
+            if (showNewsDetails.value) {
+                IconButton(
+                    onClick = { showNewsDetails.value = false }
+                ) {
+                    Text(text = "Back")
+                }
+            } else {
+                Text(
+                    text = "News",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.h5
                 )
 
-                FilterButton(onFilterSelectedListener = onFilterSelectedListener)
+                Row(
+                    modifier = Modifier.fillMaxWidth(0.7f),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    OutlinedTextField(
+                        value = searchText.value,
+                        onValueChange = { newText -> searchText.value = newText },
+                        label = { Text("Search") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth(0.8f)
+                            .height(48.dp)
+                    )
 
+                    FilterButton(onFilterSelectedListener = onFilterSelectedListener)
+
+                }
             }
         }
     }
@@ -180,7 +214,7 @@ fun FilterButton(onFilterSelectedListener: OnFilterSelectedListener) {
  * NewsList displays a list of news items fetched by the DataLoaderViewModel.
  */
 @Composable
-fun NewsList(dataLoaderViewModel: DataLoaderViewModel) {
+fun NewsList(dataLoaderViewModel: DataLoaderViewModel, listener: OnNewsItemSelectedListener) {
     val newsList by dataLoaderViewModel.newsList.observeAsState(emptyList())
     val status by dataLoaderViewModel.status.observeAsState(Status.LOADING)
 
@@ -194,7 +228,7 @@ fun NewsList(dataLoaderViewModel: DataLoaderViewModel) {
             Status.OK -> {
                 LazyColumn {
                     items(newsList) { newsItem ->
-                        NewsCard(newsItem)
+                        NewsCard(newsItem, listener)
                     }
                 }
             }
@@ -213,7 +247,7 @@ fun NewsList(dataLoaderViewModel: DataLoaderViewModel) {
  * NewsCard displays a single news item with an image, title, and source.
  */
 @Composable
-fun NewsCard(newsItem: NewsItemModel) {
+fun NewsCard(newsItem: NewsItemModel, listener: OnNewsItemSelectedListener) {
     Surface(
         color = MaterialTheme.colors.background,
         modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp)
@@ -222,6 +256,7 @@ fun NewsCard(newsItem: NewsItemModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(10.dp)
+                .clickable { listener.onNewsItemSelected(newsItem) }
         ) {
             AsyncImage(
                 model = newsItem.imageUrl,
@@ -243,6 +278,45 @@ fun NewsCard(newsItem: NewsItemModel) {
         }
     }
 }
+
+@Composable
+fun NewsDetails(newsItem: NewsItemModel) {
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .verticalScroll(scrollState)
+    ) {
+        Text(text = newsItem.title, style = MaterialTheme.typography.h4)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Source: ${newsItem.source}",
+            style = MaterialTheme.typography.subtitle1,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        AsyncImage(
+            model = newsItem.imageUrl,
+            contentDescription = newsItem.title,
+            placeholder = painterResource(id = R.drawable.ic_launcher_background),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = newsItem.description,
+            style = MaterialTheme.typography.h6,
+            fontWeight = FontWeight.Light
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Author: ${newsItem.author}",
+            style = MaterialTheme.typography.subtitle2,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 
 @Composable
 fun MyApp(content: @Composable () -> Unit) {
