@@ -13,12 +13,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.AlignmentLine
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +36,7 @@ import com.example.news_app.data.Status
 class MainActivity : ComponentActivity(), OnNewsItemSelectedListener {
     private val dataLoaderViewModel: DataLoaderViewModel by viewModels()
     private var showNewsDetails = mutableStateOf(false)
+    private var searchClicked = mutableStateOf(false)
     private var selectedNewsItem = mutableStateOf<NewsItemModel?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,12 +51,12 @@ class MainActivity : ComponentActivity(), OnNewsItemSelectedListener {
                         showNewsDetails.value = false
                     }
                     Column {
-                        TopNavBar(dataLoaderViewModel, showNewsDetails)
+                        TopNavBar(dataLoaderViewModel, showNewsDetails, searchClicked)
                         NewsDetails(selectedNewsItem.value!!)
                     }
                 } else {
                     Column {
-                        TopNavBar(dataLoaderViewModel, showNewsDetails)
+                        TopNavBar(dataLoaderViewModel, showNewsDetails, searchClicked)
                         NewsList(dataLoaderViewModel = dataLoaderViewModel, listener = listener)
                     }
                 }
@@ -72,13 +77,17 @@ class MainActivity : ComponentActivity(), OnNewsItemSelectedListener {
 @Composable
 fun TopNavBar(
     dataLoaderViewModel: DataLoaderViewModel,
-    showNewsDetails: MutableState<Boolean>
+    showNewsDetails: MutableState<Boolean>,
+    searchClicked: MutableState<Boolean>
 ) {
     val searchText = remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
 
     val onFilterSelectedListener = object : OnFilterSelectedListener {
-        override fun onFilterSelected(category: String) {
-            dataLoaderViewModel.loadNews(category)
+        override fun onFilterSelected(category: String, searchText: String) {
+            dataLoaderViewModel.loadNews(category = category, searchQuery = searchText)
         }
     }
 
@@ -102,27 +111,89 @@ fun TopNavBar(
                     Text(text = "Back")
                 }
             } else {
-                Text(
-                    text = "News",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.h5
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(0.7f),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Box(
+                    modifier = Modifier.clickable {
+                        focusManager.clearFocus()
+                        searchClicked.value = false
+                        searchText.value = ""
+                        dataLoaderViewModel.loadNews()
+                    }
                 ) {
-                    OutlinedTextField(
-                        value = searchText.value,
-                        onValueChange = { newText -> searchText.value = newText },
-                        label = { Text("Search") },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth(0.8f)
-                            .height(48.dp)
+                    Text(
+                        text = "News",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.h5
                     )
+                }
 
-                    FilterButton(onFilterSelectedListener = onFilterSelectedListener)
+                OutlinedTextField(
+                    value = searchText.value,
+                    onValueChange = { newText -> searchText.value = newText },
+                    label = { Text("Search") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .fillMaxHeight()
+                        .padding(start = 5.dp)
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                searchClicked.value = true
+                            }
+                        },
+                    trailingIcon = {
+                        if (searchText.value.isNotEmpty()) {
+                            IconButton(onClick = {
+                                searchText.value = ""
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = "Clear search field"
+                                )
+                            }
+                        }
+                    }
+                )
+                if (!searchClicked.value) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        FilterButton(
+                            onFilterSelectedListener = onFilterSelectedListener,
+                            searchText
+                        )
+
+                    }
+                } else {
+                    IconButton(
+                        onClick = {
+                            focusManager.clearFocus()
+                            searchClicked.value = false
+                            dataLoaderViewModel.loadNews(searchQuery = searchText.value)
+                        },
+                        modifier = Modifier
+                            .height(48.dp)
+                            .width(48.dp)
+                            .padding(start = 5.dp),
+                        enabled = searchText.value != ""
+                    ) {
+                        Text(text = "S")
+                    }
+                    IconButton(
+                        onClick = {
+                            focusManager.clearFocus()
+                            searchClicked.value = false
+                            searchText.value = ""
+                            dataLoaderViewModel.loadNews()
+                        },
+                        modifier = Modifier
+                            .height(48.dp)
+                            .width(48.dp)
+                            .padding(start = 5.dp)
+                    ) {
+                        Text(text = "X")
+                    }
 
                 }
             }
@@ -131,7 +202,10 @@ fun TopNavBar(
 }
 
 @Composable
-fun FilterButton(onFilterSelectedListener: OnFilterSelectedListener) {
+fun FilterButton(
+    onFilterSelectedListener: OnFilterSelectedListener,
+    searchText: MutableState<String>
+) {
     val showMenu = remember { mutableStateOf(false) }
     val selectedCategory = remember { mutableStateOf("") }
 
@@ -192,7 +266,10 @@ fun FilterButton(onFilterSelectedListener: OnFilterSelectedListener) {
         DropdownMenuItem(
             enabled = selectedCategory.value != "",
             onClick = {
-                onFilterSelectedListener.onFilterSelected(selectedCategory.value)
+                onFilterSelectedListener.onFilterSelected(
+                    category = selectedCategory.value,
+                    searchText = searchText.value
+                )
                 selectedCategory.value = ""
                 showMenu.value = false
             },

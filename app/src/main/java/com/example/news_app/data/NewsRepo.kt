@@ -20,15 +20,24 @@ import com.example.news_app.domain.ResponseModel
 import retrofit2.Response
 
 class NewsRepo {
-    suspend fun loadNews(category: String? = null): ResponseModel {
-        val response: Response<NewsResponse> = if (category == null) {
-            RetrofitHelper.getInstance()
-                .create(NewsApiService::class.java)
-                .fetchNews("us")
-        } else {
-            RetrofitHelper.getInstance()
+    suspend fun loadNews(category: String? = null, searchQuery: String? = null): ResponseModel {
+        val response: Response<NewsResponse>
+        if (category != null && searchQuery == null) {
+            response = RetrofitHelper.getInstance()
                 .create(NewsApiService::class.java)
                 .fetchNews(country = "us", category = category)
+        } else if (category != null && searchQuery != null) {
+            response = RetrofitHelper.getInstance()
+                .create(NewsApiService::class.java)
+                .fetchNews(country = "us", category = category, searchQuery = searchQuery)
+        } else if (category == null && searchQuery != null) {
+            response = RetrofitHelper.getInstance()
+                .create(NewsApiService::class.java)
+                .fetchNews(country = "us", searchQuery = searchQuery)
+        } else {
+            response = RetrofitHelper.getInstance()
+                .create(NewsApiService::class.java)
+                .fetchNews("us")
         }
 
         val newsItemModel = response.run {
